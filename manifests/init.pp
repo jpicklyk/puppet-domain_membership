@@ -12,9 +12,6 @@
 # [*password*]
 #   Password for domain user. This can optionally be passed as a "Secure
 #   String" if the `$secure_password` parameter is true.
-# [*secure_password*]
-#   Indicate that the password provided is a "Secure String." Valid values
-#   are `true` and `false`. Defaults to `false`.
 # [*machine_ou*]
 #   OU in the domain to create the machine account in. This is used durring
 #   the initial join process. It cannot move the machine account later on.
@@ -52,7 +49,6 @@ class domain_membership (
   $domain,
   $username,
   $password,
-  $secure_password = false,
   $machine_ou      = undef,
   $resetpw         = true,
   $join_options     = '1',
@@ -67,37 +63,27 @@ class domain_membership (
     fail('Class[domain_membership] domain parameter must be a valid rfc1035 domain name')
   }
 
-  # Use Either a "Secure String" password or an unencrypted password
-  if $secure_password {
-    $_password = "(New-Object System.Management.Automation.PSCredential('user',(convertto-securestring '${password}'))).GetNetworkCredential().password"
-  }else{
-    $_password = "'$password'"
-  }
+  $credential = "(New-Object System.Management.Automation.PsCredential('${username}@${domain}', (ConvertTo-SecureString '${password}' -AsPlainText -Force)))"
 
   # Allow an optional OU location for the creation of the machine
-  # account to be specified. If unset, we use the powershell representation
-  # of nil, which is the `$null` variable.
+  # account to be specified. 
   if $machine_ou {
     validate_string($machine_ou)
-    $_machine_ou = "'${machine_ou}'"
+    $ou_flag = "-OUPath '${machine_ou}'"
   }else{
-    $_machine_ou = '$null'
+    $ou_flag = ''
   }
 
-  # Since the powershell command is combersome, we'll construct it here for clarity... well, almost clarity
-  #
-  $command = "(Get-WmiObject -Class Win32_ComputerSystem).JoinDomainOrWorkGroup('${domain}',${_password},'${username}@${domain}',${_machine_ou},${join_options})"
-
   exec { 'join_domain':
-    command  => $command,
-    unless   => "if((Get-WmiObject -Class Win32_ComputerSystem).domain -ne '${domain}'){ exit 1 }",
+    command  => "Add-Computer -DomainName '${domain}' -Credential ${credential} ${ou_flag}",
+    unless   => "[System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain().Name -eq '${domain}')",
     provider => powershell,
   }
 
   if $resetpw {
     exec { 'reset_computer_trust':
-      command  => "netdom /RESETPWD /UserD:${username} /PasswordD:${_password} /Server:${domain}",
-      unless   => "if ($(nltest /sc_verify:${domain}) -match 'ERROR_INVALID_PASSWORD') {exit 1}",
+      command  => "Reset-ComputerMachinePassword -Credential $credential",
+      unless   => "Test-ComputerSecureChannel", #can take ~60s if no DC is reachable
       provider => powershell,
       require  => Exec['join_domain'],
     }
