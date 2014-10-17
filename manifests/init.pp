@@ -76,7 +76,7 @@ class domain_membership (
 
   exec { 'join_domain':
     command  => "Add-Computer -DomainName ${domain} -Credential ${credential} ${ou_flag}",
-    unless   => "[System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain().Name -eq '${domain}')",
+    unless   => "[System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain().Name -eq '${domain}'",
     provider => powershell,
   }
 
