@@ -63,7 +63,7 @@ class domain_membership (
     fail('Class[domain_membership] domain parameter must be a valid rfc1035 domain name')
   }
 
-  $credential = "(New-Object System.Management.Automation.PsCredential('${username}@${domain}', (ConvertTo-SecureString '${password}' -AsPlainText -Force)))"
+  $credential = "(New-Object System.Management.Automation.PsCredential(\'${username}@${domain}\', (ConvertTo-SecureString \'${password}\' -AsPlainText -Force)))"
 
   # Allow an optional OU location for the creation of the machine
   # account to be specified. 
@@ -75,7 +75,7 @@ class domain_membership (
   }
 
   exec { 'join_domain':
-    command  => "Add-Computer -DomainName '${domain}' -Credential ${credential} ${ou_flag}",
+    command  => "Add-Computer -DomainName ${domain} -Credential ${credential} ${ou_flag}",
     unless   => "[System.DirectoryServices.ActiveDirectory.Domain]::GetComputerDomain().Name -eq '${domain}')",
     provider => powershell,
   }
