@@ -51,14 +51,14 @@ class domain_membership (
   $password,
   $machine_ou      = undef,
   $resetpw         = true,
-  $join_options     = '1',
+  $join_options     = undef,
 ){
 
   # Validate Parameters
   validate_string($username)
   validate_string($password)
   validate_bool($resetpw)
-  validate_re($join_options, '\d+', 'join_options parameter must be a number.')
+  
   unless is_domain_name($domain) {
     fail('Class[domain_membership] domain parameter must be a valid rfc1035 domain name')
   }
