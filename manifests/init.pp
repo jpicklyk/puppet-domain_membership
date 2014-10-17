@@ -50,7 +50,7 @@ class domain_membership (
   $username,
   $password,
   $machine_ou      = undef,
-  $resetpw         = true,
+  $resetpw         = false,
   $join_options     = undef,
 ){
 
